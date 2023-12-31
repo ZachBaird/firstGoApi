@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/georgysavva/scany/v2/sqlscan"
 	"github.com/gorilla/mux"
-	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"os"
@@ -32,70 +30,31 @@ func createConnString() string {
 
 // getLessons queries the db and populates the results in a slice of Lesson.
 func getLessons(w http.ResponseWriter, r *http.Request) {
-	connString := createConnString()
-	db, err := sql.Open("postgres", connString)
+	db, err := gorm.Open(postgres.Open(createConnString()))
 	if err != nil {
 		log.Fatal("the db connection failed")
 	}
 
-	rows, err := db.Query("SELECT id, title, description FROM lessons")
-	if err != nil {
-		log.Fatal("failed to query db")
-	}
-	defer rows.Close()
-
-	cols, err := rows.Columns()
-	if err != nil {
-		log.Fatal("failed to get columns")
-	}
-
-	for _, col := range cols {
-		fmt.Fprintf(w, "%s  ", col)
-	}
-	fmt.Fprintf(w, "\n\n")
-
 	var lessons []Lesson
+	db.Select([]string{"id", "title", "description"}).Find(&lessons)
 
-	for rows.Next() {
-		var lesson Lesson
-
-		if err := rows.Scan(&lesson.Id, &lesson.Title, &lesson.Description); err != nil {
-			log.Fatal("something went wrong scanning data")
-		}
-
-		lessons = append(lessons, lesson)
-	}
-
-	for _, lesson := range lessons {
-		fmt.Fprintf(w, "%d: %s - %s\n", lesson.Id, lesson.Title, lesson.Description)
-	}
-
-	if err := db.Close(); err != nil {
-		log.Fatal("something went wrong closing db conn")
+	w.Header().Add("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(lessons); err != nil {
+		log.Fatal("something went wrong serializing query results")
 	}
 }
 
 // getLessonById queries the db for a Lesson matching the id.
 func getLessonById(w http.ResponseWriter, r *http.Request) {
-	// Declare scany context.
-	ctx := context.Background()
-	connString := createConnString()
-	db, err := sql.Open("postgres", connString)
+	db, err := gorm.Open(postgres.Open(createConnString()))
 	if err != nil {
 		log.Fatal("the db connection failed")
 	}
 
 	var lesson Lesson
-	vals := mux.Vars(r)
+	values := mux.Vars(r)
 
-	query := fmt.Sprintf(`SELECT id, title, description fROM lessons WHERE id = %s`, vals["id"])
-	if err := sqlscan.Get(ctx, db, &lesson, query); err != nil {
-		log.Fatal("failed to query db")
-	}
-
-	if err := db.Close(); err != nil {
-		log.Fatal("something went wrong closing the db conn")
-	}
+	db.First(&lesson, values["id"])
 
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(lesson); err != nil {
@@ -111,9 +70,17 @@ func generateNewLesson(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var lesson Lesson
-	json.NewDecoder(r.Body).Decode(&lesson)
+	if err := json.NewDecoder(r.Body).Decode(&lesson); err != nil {
+		http.Error(w, "Error deserializing request body.", http.StatusBadRequest)
+		return
+	}
 
-	fmt.Fprintf(w, "Received lesson of Id: %d, Title: %s, Description: %s", lesson.Id, lesson.Title, lesson.Description)
+	_, err := fmt.Fprintf(w,
+		"Received lesson of Id: %d, Title: %s, Description: %s",
+		lesson.Id, lesson.Title, lesson.Description)
+	if err != nil {
+		log.Fatalf("fmt err: %v", err)
+	}
 }
 
 func main() {
