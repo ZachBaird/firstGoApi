@@ -1,25 +1,35 @@
 package main
 
-// GetLessonsHandler is an http.Handler for getting all Lesson from the db.
-type GetLessonsHandler struct{}
+import "log/slog"
 
-// NewGetLessonsHandler builds a GetLessonsHandler.
-func NewGetLessonsHandler() *GetLessonsHandler {
-	return &GetLessonsHandler{}
+// GetLessonsHandler is an http.Handler for getting all Lesson from the db.
+type GetLessonsHandler struct {
+	log *slog.Logger
 }
 
 // GetLessonByIdHandler is an http.Handler for getting a Lesson from the db.
-type GetLessonByIdHandler struct{}
-
-// NewGetLessonByIdHandler builds a GetLessonByIdHandler.
-func NewGetLessonByIdHandler() *GetLessonByIdHandler {
-	return &GetLessonByIdHandler{}
+type GetLessonByIdHandler struct {
+	log *slog.Logger
 }
 
 // GenerateLessonHandler is an http.Handler for generating a Lesson from http.Request.
-type GenerateLessonHandler struct{}
+type GenerateLessonHandler struct {
+	log *slog.Logger
+}
+
+// -----
+
+// NewGetLessonsHandler builds a GetLessonsHandler.
+func NewGetLessonsHandler(l *slog.Logger) *GetLessonsHandler {
+	return &GetLessonsHandler{log: l}
+}
+
+// NewGetLessonByIdHandler builds a GetLessonByIdHandler.
+func NewGetLessonByIdHandler(l *slog.Logger) *GetLessonByIdHandler {
+	return &GetLessonByIdHandler{log: l}
+}
 
 // NewGenerateLessonHandler builds a GenerateLessonHandler.
-func NewGenerateLessonHandler() *GenerateLessonHandler {
-	return &GenerateLessonHandler{}
+func NewGenerateLessonHandler(l *slog.Logger) *GenerateLessonHandler {
+	return &GenerateLessonHandler{log: l}
 }

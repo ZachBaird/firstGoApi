@@ -2,15 +2,15 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/gorilla/mux"
 	"go.uber.org/fx"
+	"log/slog"
 	"net"
 	"net/http"
 )
 
 // NewHttpServer registers an http.Server with the application.
-func NewHttpServer(lc fx.Lifecycle, r *mux.Router) *http.Server {
+func NewHttpServer(lc fx.Lifecycle, r *mux.Router, l *slog.Logger) *http.Server {
 	srv := &http.Server{Addr: ":8080", Handler: r}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -19,7 +19,7 @@ func NewHttpServer(lc fx.Lifecycle, r *mux.Router) *http.Server {
 				return err
 			}
 
-			fmt.Println("Starting server at ", srv.Addr)
+			l.Info("Starting server at ", srv.Addr)
 			go srv.Serve(listener)
 			return nil
 		},

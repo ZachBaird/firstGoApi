@@ -6,7 +6,6 @@ import (
 	"github.com/gorilla/mux"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
 	"net/http"
 )
 
@@ -17,10 +16,11 @@ type Lesson struct {
 }
 
 // (*GetLessonsHandler) ServeHTTP queries the db and populates the results in a slice of Lesson.
-func (*GetLessonsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *GetLessonsHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	db, err := gorm.Open(postgres.Open(CreateConnString()))
+
 	if err != nil {
-		log.Fatal("the db connection failed")
+		h.log.Error("the db connection failed")
 	}
 
 	var lessons []Lesson
@@ -28,15 +28,15 @@ func (*GetLessonsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(lessons); err != nil {
-		log.Fatal("something went wrong serializing query results")
+		h.log.Error("something went wrong serializing query results")
 	}
 }
 
 // (*GetLessonByIdHandler) ServeHTTP queries the db for a Lesson matching the id.
-func (*GetLessonByIdHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *GetLessonByIdHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	db, err := gorm.Open(postgres.Open(CreateConnString()))
 	if err != nil {
-		log.Fatal("the db connection failed")
+		h.log.Error("the db connection failed")
 	}
 
 	var lesson Lesson
@@ -46,20 +46,22 @@ func (*GetLessonByIdHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(lesson); err != nil {
-		log.Fatal("error serializing lesson data to json")
+		h.log.Error("error serializing lesson data to json")
 	}
 }
 
 // (*GenerateLessonHandler) ServeHTTP deserializes a new Lesson from the request body and returns it to the caller.
-func (*GenerateLessonHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *GenerateLessonHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid Method", http.StatusBadRequest)
+		h.log.Error("Wrong HTTP Method used", r.Method)
 		return
 	}
 
 	var lesson Lesson
 	if err := json.NewDecoder(r.Body).Decode(&lesson); err != nil {
 		http.Error(w, "Error deserializing request body.", http.StatusBadRequest)
+		h.log.Error("Encountered error deserializing request", err)
 		return
 	}
 
@@ -67,6 +69,6 @@ func (*GenerateLessonHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		"Received lesson of Id: %d, Title: %s, Description: %s",
 		lesson.Id, lesson.Title, lesson.Description)
 	if err != nil {
-		log.Fatalf("fmt err: %v", err)
+		h.log.Warn("fmt err: %v", err)
 	}
 }
